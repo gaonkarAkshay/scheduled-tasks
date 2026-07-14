@@ -1,34 +1,43 @@
-##################### Extra Hard Starting Project ######################
-import datetime as dt
-import pandas
-import random
+import os
+
+import requests
 import smtplib
+
 
 from_mail = "akshay.gaonkar07@gmail.com"
 password = "wiyubqxotxxqtfbh"
 
-# 1. Update the birthdays.csv
+api_key = os.environ.get("OWM_API_KEY")
+print(api_key)
+# city_name = input("Please enter city name whose weather report you want to know: \n")
+base_url = f"https://api.openweathermap.org/data/2.5/forecast"
 
-# 2. Check if today matches a birthday in the birthdays.csv
+def send_mail():
+    with smtplib.SMTP("smtp.gmail.com") as connection:
+        connection.starttls()
+        connection.login(from_mail, password)
+        connection.sendmail(from_mail, from_mail, "Subject: Weather forecast for Mumbai, India\n\n"
+                                                  "Rain is expected within the next 12 hours. "
+                                                  "Please remember to carry an umbrella with you.")
 
-now = dt.datetime.now()
-month = now.month
-day = now.day
+def get_weather():
+    parameters = {
+        "q": "Mumbai, India",
+        "cnt": 4,
+        "appid": api_key
+    }
+    response = requests.get(f"{base_url}", params=parameters)
+    response.raise_for_status()
+    data = response.json()
+    list_data = data["list"]
+    print(list_data)
+    will_rain = False
+    for item in list_data:
+        weather_id = item["weather"][0]["id"]
+        if weather_id < 700:
+            will_rain = True
+    if will_rain:
+        # send_mail()
+        print("Rain is expected")
 
-data = pandas.read_csv("birthdays.csv")
-data_dict = data.to_dict("records")
-print(data_dict)
-
-for data_object in data_dict:
-    if data_object["month"] == now.month and data_object["day"] == now.day:
-        random_letter_index = random.randint(1, 3)
-        with open(f"letter_templates/letter_{random_letter_index}.txt", "r") as file:
-            content = file.read()
-        updated_content = content.replace("[NAME]", data_object["name"])
-        print(updated_content)
-
-        with smtplib.SMTP("smtp.gmail.com") as connection:
-            connection.starttls()
-            connection.login(user=from_mail, password=password)
-            to_mail = f"{data_object["email"]}"
-            connection.sendmail(from_mail, to_mail, f"Subject: Happy Birthday Wish\n\n{updated_content}")
+get_weather()
